@@ -120,6 +120,93 @@ In this lab, we will learn how to analyze a file that is suspected of being malw
 5. For _Name_, type "hash.txt".
 6. Click **Save**.
 
-## Conclusion
 
-Congratulations, you've successfully completed this hands-on lab!
+# Installing and Configuring OpenVAS
+
+## Introduction
+
+In this lab, we'll be installing OpenVAS, an open-source vulnerability scanner. Then we'll configure it to scan `localhost` and export the scan task to our Downloads directory.
+
+## Solution
+
+We will connect to our lab server using VNC. The IP address and login credentials are provided on the lab instructions page.
+
+VNC connections will be different for each operating system.
+
+For Mac users:
+
+1. Open Finder.
+2. Press **Command+K** on your keyboard to bring up the _Connect to server_ window.
+    - Alternatively, expand **Go** in the menu at the top of the screen and click **Connect to Server**.
+3. In the _Connect to Server_ window, connect to `vnc://<IP_ADDRESS>:5901`, making sure to replace `<IP_ADDRESS>` with the IP address you were provided in the hands-on lab instructions.
+
+### Install OpenVAS
+
+**Note:** If you get a `dpkg lock` message, wait a few minutes, and then retry the command.
+
+1. Add the repository to `apt`.
+    
+    `sudo add-apt-repository ppa:mrazavi/openvas`
+    
+2. Enter your password at the prompt.
+3. Run an update.
+    
+    `sudo apt-get update`
+    
+4. Install SQLite 3.
+    
+    `sudo apt-get install -y sqlite3`
+    
+5. Install OpenVAS (**Note:** The step of rebuilding the NVT cache takes a few minutes).
+    
+    `sudo apt-get install -y openvas9`
+    
+    If you are installing for a production system, you will need to run the below commands. However, it will take about an additional hour for Greenbone to download all of the data. We are not going to do this as part of the lab since it's not necessary to complete the tasks.
+
+    - `sudo greenbone-nvt-sync`
+    - `greenbone-scapdata-sync`
+    - `greenbone-certdata-sync`
+    - `sudo openvasmd --rebuild --progress`
+    - `sudo service openvas-manager restart`
+
+
+6. Restart the OpenVAS manager service.
+    
+    `sudo service openvas-manager restart`
+    
+7. Check the services to verify that OpenVAS is running.
+    
+    `ps -ef | grep openvas`
+    
+
+### Create an OpenVAS Scan of `localhost` and Export the Task to Your Downloads Directory
+
+1. Open your web browser, and navigate to [https://10.0.0.116:4000](https://10.0.0.116:4000/).
+    
+2. You will receive a warning message that the connection is unsecure. Click **Advanced** > **Add Exception** > **Confirm Security Exception**.
+    
+3. Log in to Greenbone with the username `admin` and the password `admin`.
+    
+4. Click **Scans** > **Tasks**.
+    
+5. Click the **`*`** icon, then **New Task**.
+    
+6. In the _New Task_ menu, fill out the following information:
+    
+    - **Name:** LabScan
+    - **Scan Targets:**
+        - Click the **`*`** icon next to _Scan Targets_ and configure the following settings:
+            - **Name:** localhost
+            - **Manual:** localhost
+        - Click **Create**.
+    - **Schedule:** Once
+    - **Alterable Task:** Yes
+7. Leave the rest of the options as their defaults, and click **Create**.
+    
+8. Under _Actions_, click the green arrow icon on the right to export the task.
+    
+9. In the dialog box that opens, choose **Save File**, then click **OK**.
+    
+10. Open your Downloads folder and verify that the exported file is there.
+    
+
