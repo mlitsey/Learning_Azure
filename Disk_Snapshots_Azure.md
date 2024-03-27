@@ -1,6 +1,28 @@
+# Linux Multi Disk Volume Group refresh from production server
 
 
-## envcopy call hook script
+## envcopy call hook script 
+
+```bash
+LOG=/epic/logs/sup_prd-refresh-$(date +"%Y-%m-%d-%H.%M").log
+
+# Zero out log file, redirect all STDIN and STDERR output to log file
+exec >${LOG} 2>&1
+
+
+echo "kill user process in /epic/sup01 subdirectories"
+fuser -kmMs /epic/sup01
+#fuser -uk $(find /epic/sup01/ -type d)
+
+## SUP unmount disks
+`sudo umount /epic/sup01`
+
+#echo "$(date +"%Y-%m-%d %H:%M:%S") Exporting target volume groups on snapshot host"
+#/usr/sbin/vgchange -a n $volumeGroup
+
+
+
+```
 
 ## SUP unmount disks
 `sudo umount /epic/sup01`
@@ -28,6 +50,12 @@ for disk in `cat ~/disks.txt`; do az disk delete -g odb__group --name $disk --no
     - PRD should be set to auto thaw in case of issues
     - ssh key share will need to be setup
     - ssh-copy-id <keyname> serverName
+```bash
+# Freeze Cache on PRD Cache server
+echo "$(date +"%Y-%m-%d %H:%M:%S") Freezing Cache on PRD Cache server"
+if [[ -v COMMIT ]]; then ssh -l ${EPICUSER} ${EPICHOST} ${EPICFREEZE}; fi
+echo "$(date +"%Y-%m-%d %H:%M:%S") Cache frozen on PRD Cache server"
+```
 
 ## create snap
 ```bash
@@ -40,6 +68,12 @@ for disk in `cat ~/disks.txt`; do az snapshot create -g odb__group -n $disk"_bac
 
 ## PRD Thaw
 `ssh epicadm@EpicPrdServer:/epic/prd/bin/instthaw`
+```bash
+# Thaw Cache on PRD Cache server
+echo "$(date +"%Y-%m-%d %H:%M:%S") Thawing Cache on PRD Cache server"
+if [[ -v COMMIT ]]; then ssh -l ${EPICUSER} ${EPICHOST} ${EPICTHAW}; fi
+echo "$(date +"%Y-%m-%d %H:%M:%S") Cache thawed on PRD Cache server"
+```
 
 ## create disks
 ```bash
@@ -64,6 +98,8 @@ az vm disk attach --vm-name odb-sup-snap -g odb__group --disks sup001 sup002
 lsblk
 ```
 
+
+
 ## rename volume group
 ```bash
 sudo vgrename prdvg supvg
@@ -82,4 +118,44 @@ sudo lvs -o lv_name,vg_name,lv_size,stripes,stripesize,devices
 sudo mount /dev/mapper/supvg-sup01 /epic/sup01
 ll /epic/sup01
 ```
+```bash
+# some or all steps below are redundant from physical hardware script
+
+echo "/usr/sbin/lvrename /dev/${NEWLVVG[$OLDLV]}/${OLDLV[$OLDLV]} ${NEWLV[$OLDLV]}"
+    if [[ -v COMMIT ]]; then /usr/sbin/lvrename /dev/${NEWLVVG[$OLDLV]}/${OLDLV[$OLDLV]} ${NEWLV[$OLDLV]}; fi
+
+    echo "mount -t xfs /dev/mapper/${NEWLVVG[$OLDLV]}-${NEWLV[$OLDLV]} ${MOUNTDIR[$OLDLV]}"
+    if [[ -v COMMIT ]]; then mount -t xfs /dev/mapper/${NEWLVVG[$OLDLV]}-${NEWLV[$OLDLV]} ${MOUNTDIR[$OLDLV]}; fi
+
+    echo "umount ${MOUNTDIR[$OLDLV]}"
+    if [[ -v COMMIT ]]; then umount ${MOUNTDIR[$OLDLV]}; fi
+
+    # check uuid of cachevg
+    echo "$(date +"%Y-%m-%d %H:%M:%S") Checking UUID for cachevg"
+    if [[ -v COMMIT ]]; then blkid |grep cachevg; fi
+
+    echo "/usr/sbin/xfs_admin -U generate /dev/mapper/${NEWLVVG[$OLDLV]}-${NEWLV[$OLDLV]}"
+    if [[ -v COMMIT ]]; then /usr/sbin/xfs_admin -U generate /dev/mapper/${NEWLVVG[$OLDLV]}-${NEWLV[$OLDLV]}; fi
+
+    echo "mount -t xfs /dev/mapper/${NEWLVVG[$OLDLV]}-${NEWLV[$OLDLV]} ${MOUNTDIR[$OLDLV]}"
+    if [[ -v COMMIT ]]; then mount -t xfs /dev/mapper/${NEWLVVG[$OLDLV]}-${NEWLV[$OLDLV]} ${MOUNTDIR[$OLDLV]}; fi
+
+    # check uuid of cachevg after xfs_admin
+    echo "$(date +"%Y-%m-%d %H:%M:%S") Checking UUID for cachevg after generating new one"
+    if [[ -v COMMIT ]]; then blkid |grep cachevg; fi
+
+# Start database or backup
+echo "$(date +"%Y-%m-%d %H:%M:%S") Starting removing IRIS lock files"
+
+for OLDLV in $KEYS
+do
+  echo "rm ${MOUNTDIR[$OLDLV]}/*/iris.lck"
+  if [[ -v COMMIT ]]; then rm ${MOUNTDIR[$OLDLV]}/*/iris.lck ; fi
+done
+
+
+# End of script
+echo "$(date +"%Y-%m-%d %H:%M:%S") Epic refresh script complete"
+```
+
 
