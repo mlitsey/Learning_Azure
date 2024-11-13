@@ -909,4 +909,5 @@ For more information about Azure Backup, see the following articles:
 - [Azure Data Protection Manager (DPM)](https://learn.microsoft.com/en-us/azure/backup/backup-azure-dpm-introduction) and [Azure Backup Server (MABS)](https://learn.microsoft.com/en-us/azure/backup/backup-mabs-protection-matrix)
 
 
-# 
+# Manage virtual machines with the Azure CLI  
+
